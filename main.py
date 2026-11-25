@@ -31,25 +31,29 @@ EXPECTED_BYTES = 192
 
 
 def verify(path, data):
-    with open(path, "rb") as f:
-        written = f.read()
+    """Read the entry back and check it byte for byte; True only on a match."""
+    try:
+        with open(path, "rb") as f:
+            written = f.read()
+    except OSError:
+        return False
     if written != data:
-        raise SystemExit("entry.txt on disk does not match the scene")
+        return False
     if len(written) != EXPECTED_BYTES:
-        raise SystemExit("entry.txt is not 192 bytes")
+        return False
     if hashlib.sha256(written).hexdigest() != EXPECTED_SHA256:
-        raise SystemExit("entry.txt sha256 does not match its pinned value")
+        return False
     text = written.decode("utf-8")
     if not 1 <= len(text) <= 280 or not text.strip():
-        raise SystemExit("entry text is outside the 1-280 character gate")
+        return False
     if text.count("\n") > 1:
-        raise SystemExit("entry text is more than two lines")
-    return written
+        return False
+    return True
 
 
 def main():
     if len(TEXT) != EXPECTED_CHARS:
-        raise SystemExit("entry text is not 192 characters")
+        return 1
     data = TEXT.encode("utf-8")
     out_dir = os.environ.get("OUTPUT_DIR", "/output")
     os.makedirs(out_dir, exist_ok=True)
@@ -57,9 +61,11 @@ def main():
     with open(path, "wb") as f:
         f.write(data)
     verified = verify(path, data)
-    print(len(verified))
-    return path
+    if not verified:
+        return 1
+    print(len(data))
+    return 0
 
 
 if __name__ == "__main__":
-    print(main())
+    raise SystemExit(main())
